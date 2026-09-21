@@ -1,0 +1,93 @@
+configurations {
+    // icu4j is huge: https://en.wikipedia.org/wiki/International_Components_for_Unicode
+    all*.exclude group: 'com.ibm.icu', module: 'icu4j'
+}
+
+dependencies {
+    implementation project(':autoupdate')
+    implementation project(':connectivity')
+    implementation project(':ts_plugin')
+    implementation project(':trigger-ui')
+    implementation project(':autotest')
+    implementation project(':luaformatter')
+    implementation project(':enum_to_string')
+    implementation global_libs.json
+    implementation 'com.formdev:flatlaf:3.6.1'
+
+    implementation("com.fifesoft:autocomplete:3.3.2")
+    implementation("com.fifesoft:rsyntaxtextarea:3.6.0")
+
+    implementation global_libs.antlr
+    implementation 'com.miglayout:miglayout-swing:4.1'
+    implementation 'org.bidib.jbidib.eu.hansolo:SteelSeries:3.9.31.2'
+    implementation files('../lib/trident-6.2.jar')
+/*
+    implementation files('../lib/dfu/dfu_java.jar')
+    implementation files('../lib/dfu/IntelHexParser.jar')
+*/
+    testFixturesApi testFixtures(project(':ecu_io'))
+    testImplementation testFixtures(project(':connectivity'))
+    testFixturesApi project(':connectivity')
+    implementation global_libs.jaxb_runtime
+}
+
+// Headless soak: cycles the SD card ECU/logging <-> PC/MSD 10 times, 20s in each mode, and
+// reports a pass/fail tally. Auto-detects the serial port, or pass -PecuPort=COM7.
+task runSdCycle(type: JavaExec) {
+    dependsOn testClasses
+    group = "Execution"
+    description = "Run SdEcuPcCycleSandbox against a connected ECU"
+    workingDir = rootProject.projectDir
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.rusefi.SdEcuPcCycleSandbox'
+    standardInput = System.in
+    maxHeapSize = '2g'
+    jvmArgs '-Djava.awt.headless=true'
+    if (project.hasProperty('ecuPort')) {
+        args project.property('ecuPort')
+    }
+}
+
+// Writes a JVM argument file (build/scanAndUpdate.args) holding the -classpath for the test
+// source set, so bin/ScanAndUpdateBoardSandbox.bat can launch the sandbox via `java @argfile`.
+// An argument file is required because this classpath is ~9 KB, well over the Windows
+// command-line / environment-variable length limit. Depends on testClasses so the compiled
+// sandbox is on the path.
+task writeScanAndUpdateArgs {
+    // capture at configuration time so doLast holds no Project reference (configuration-cache safe)
+    def testRuntimeClasspath = sourceSets.test.runtimeClasspath
+    // depend on the classpath itself so every producer runs (test classes, the testFixtures
+    // jar that carries ScanAndUpdateFlow, dependency-project jars), not just testClasses
+    dependsOn testRuntimeClasspath
+    def argsFile = layout.buildDirectory.file("scanAndUpdate.args")
+    outputs.file(argsFile).withPropertyName("argsFile")
+    doLast {
+        // forward slashes: the JVM argument-file parser treats backslash as an escape character
+        def cp = testRuntimeClasspath.asPath.replace('\\', '/')
+        argsFile.get().asFile.text = "-classpath \"" + cp + "\"\n"
+    }
+}
+
+def customJavaUi = findProject(':custom-java-ui')
+
+shadowJar {
+    if (customJavaUi != null) {
+        dependsOn ':custom-java-ui:classes'
+        from { customJavaUi.sourceSets.main.output }
+    }
+
+    base {
+      // [dark-magic-jar] see https://github.com/rusefi/rusefi/pull/9051 for important very not obvious issue
+        archiveFileName = 'DCtuneRstudio.jar'
+        destinationDirectory = file("${rootDir}/java_console/build/libs")
+        archiveClassifier = ''
+    }
+
+    manifest {
+        attributes(
+          'Main-Class': 'com.rusefi.Launcher',
+          'Build-Jdk'      : "${System.properties['java.version']} (${System.properties['java.vendor']} ${System.properties['java.vm.version']})",
+          'Built-Date': new Date().toString()
+        )
+    }
+}

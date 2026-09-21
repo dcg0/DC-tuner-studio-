@@ -1,0 +1,4 @@
+// Compatibility aggregator: the functional console remains the :ui module.
+tasks.named('build') {
+    dependsOn ':ui:shadowJar'
+}
