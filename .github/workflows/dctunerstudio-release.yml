@@ -1,0 +1,195 @@
+name: DCtuneRstudio release builds
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        description: Create or update a GitHub release with all packages
+        required: true
+        default: true
+        type: boolean
+  push:
+    tags:
+      - 'dctunerstudio-v*'
+
+permissions:
+  contents: write
+
+env:
+  RUSEFI_COMMIT: a20051f9364bb02c82b267d8ad9033004a497c6d
+  PROJECT_DIR: DC-tuner-studio-
+
+jobs:
+  linux-x64:
+    name: Linux x86_64 JAR and DEB
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+      - name: Prepare complete rusEFI source with DC overlay
+        env:
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          RUSEFI_COMMIT: ${{ env.RUSEFI_COMMIT }}
+        run: bash "$PROJECT_DIR/packaging/prepare-source.sh"
+      - name: Build and test universal JAR
+        working-directory: ${{ env.SOURCE_DIR }}
+        run: ./gradlew :java_console:build --no-daemon
+      - name: Verify JAR manifest
+        working-directory: ${{ env.SOURCE_DIR }}
+        run: |
+          test -f java_console/build/libs/DCtuneRstudio.jar
+          unzip -p java_console/build/libs/DCtuneRstudio.jar META-INF/MANIFEST.MF | grep -q 'Main-Class: com.rusefi.Launcher'
+      - name: Build Linux DEB with bundled runtime
+        working-directory: ${{ env.SOURCE_DIR }}
+        run: |
+          mkdir -p dist/input dist/output
+          cp java_console/build/libs/DCtuneRstudio.jar dist/input/
+          jpackage --type deb --name dctunerstudio --app-version 1.0.0 --vendor 'DC Laboratory' --description 'DCtuneRstudio — Diagnóstico y Sintonización Automotriz' --input dist/input --main-jar DCtuneRstudio.jar --main-class com.rusefi.Launcher --dest dist/output --linux-shortcut --linux-menu-group 'Development;Engineering'
+          mv dist/output/dctunerstudio_*.deb dist/output/DCtuneRstudio-Linux.deb
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DCtuneRstudio-Linux-x86_64
+          path: |
+            ${{ env.SOURCE_DIR }}/java_console/build/libs/DCtuneRstudio.jar
+            ${{ env.SOURCE_DIR }}/dist/output/DCtuneRstudio-Linux.deb
+
+  windows:
+    name: Windows EXE
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+      - name: Prepare complete rusEFI source with DC overlay
+        shell: bash
+        env:
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          RUSEFI_COMMIT: ${{ env.RUSEFI_COMMIT }}
+        run: bash "$PROJECT_DIR/packaging/prepare-source.sh"
+      - name: Build Windows application image and EXE installer
+        shell: bash
+        working-directory: ${{ env.SOURCE_DIR }}
+        run: |
+          ./gradlew :java_console:build --no-daemon
+          mkdir -p dist/input dist/output
+          cp java_console/build/libs/DCtuneRstudio.jar dist/input/
+          jpackage --type exe --name DCtuneRstudio --app-version 1.0.0 --vendor 'DC Laboratory' --description 'DCtuneRstudio — Diagnóstico y Sintonización Automotriz' --input dist/input --main-jar DCtuneRstudio.jar --main-class com.rusefi.Launcher --dest dist/output --win-menu --win-shortcut --win-dir-chooser
+          mv dist/output/DCtuneRstudio-*.exe dist/output/DCtuneRstudio-Windows.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DCtuneRstudio-Windows
+          path: ${{ env.SOURCE_DIR }}/dist/output/DCtuneRstudio-Windows.exe
+
+  macos:
+    name: macOS DMG
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+      - name: Prepare complete rusEFI source with DC overlay
+        env:
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          RUSEFI_COMMIT: ${{ env.RUSEFI_COMMIT }}
+        run: bash "$PROJECT_DIR/packaging/prepare-source.sh"
+      - name: Build macOS DMG
+        working-directory: ${{ env.SOURCE_DIR }}
+        run: |
+          ./gradlew :java_console:build --no-daemon
+          mkdir -p dist/input dist/output
+          cp java_console/build/libs/DCtuneRstudio.jar dist/input/
+          jpackage --type dmg --name DCtuneRstudio --app-version 1.0.0 --vendor 'DC Laboratory' --description 'DCtuneRstudio — Diagnóstico y Sintonización Automotriz' --input dist/input --main-jar DCtuneRstudio.jar --main-class com.rusefi.Launcher --dest dist/output
+          mv dist/output/DCtuneRstudio-*.dmg dist/output/DCtuneRstudio-macOS.dmg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DCtuneRstudio-macOS
+          path: ${{ env.SOURCE_DIR }}/dist/output/DCtuneRstudio-macOS.dmg
+
+  raspberry-pi-arm64:
+    name: Raspberry Pi ARM64 DEB
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+      - name: Prepare complete rusEFI source with DC overlay
+        env:
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          RUSEFI_COMMIT: ${{ env.RUSEFI_COMMIT }}
+        run: bash "$PROJECT_DIR/packaging/prepare-source.sh"
+      - name: Build ARM64 JAR and Raspberry Pi package
+        working-directory: ${{ env.SOURCE_DIR }}
+        run: |
+          ./gradlew :java_console:build --no-daemon
+          mkdir -p dist/input dist/output
+          cp java_console/build/libs/DCtuneRstudio.jar dist/input/
+          jpackage --type deb --name dctunerstudio --app-version 1.0.0 --vendor 'DC Laboratory' --description 'DCtuneRstudio para Raspberry Pi ARM64' --input dist/input --main-jar DCtuneRstudio.jar --main-class com.rusefi.Launcher --dest dist/output --linux-shortcut
+          mv dist/output/dctunerstudio_*.deb dist/output/DCtuneRstudio-RaspberryPi.deb
+          dpkg-deb --info dist/output/DCtuneRstudio-RaspberryPi.deb | grep -E 'Architecture: arm64|Package: dctunerstudio'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DCtuneRstudio-RaspberryPi-ARM64
+          path: ${{ env.SOURCE_DIR }}/dist/output/DCtuneRstudio-RaspberryPi.deb
+
+  web:
+    name: Web package
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assemble static web distribution
+        run: |
+          mkdir -p dist/DCtuneRstudio-Web/ui-web dist/DCtuneRstudio-Web/media
+          cp -R "$PROJECT_DIR/ui-web/." dist/DCtuneRstudio-Web/ui-web/
+          cp -R "$PROJECT_DIR/media/." dist/DCtuneRstudio-Web/media/
+          cp "$PROJECT_DIR/README.md" dist/DCtuneRstudio-Web/
+          (cd dist && zip -qr DCtuneRstudio-Web.zip DCtuneRstudio-Web)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DCtuneRstudio-Web
+          path: dist/DCtuneRstudio-Web.zip
+
+  release:
+    name: Publish all packages
+    if: ${{ github.event_name == 'push' || inputs.publish_release == true }}
+    needs: [linux-x64, windows, macos, raspberry-pi-arm64, web]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+      - name: Normalize release filenames
+        run: |
+          find release-assets -type f -printf '%f\n'
+          test -f "$(find release-assets -name 'DCtuneRstudio.jar' -print -quit)"
+          test -f "$(find release-assets -name 'DCtuneRstudio-Linux.deb' -print -quit)"
+          test -f "$(find release-assets -name 'DCtuneRstudio-Windows.exe' -print -quit)"
+          test -f "$(find release-assets -name 'DCtuneRstudio-macOS.dmg' -print -quit)"
+          test -f "$(find release-assets -name 'DCtuneRstudio-RaspberryPi.deb' -print -quit)"
+          test -f "$(find release-assets -name 'DCtuneRstudio-Web.zip' -print -quit)"
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: dctunerstudio-v1.0.0
+          name: DCtuneRstudio v1.0.0
+          body: |
+            Código DCtuneRstudio — marca DC Laboratory activada.
+
+            Incluye JAR universal, instaladores Windows/Linux/macOS, paquete Raspberry Pi ARM64 y versión web.
+          files: release-assets/**
+          fail_on_unmatched_files: true
