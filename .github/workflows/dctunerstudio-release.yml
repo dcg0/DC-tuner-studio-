@@ -183,7 +183,7 @@ jobs:
           test -f "$(find release-assets -name 'DCtuneRstudio-RaspberryPi.deb' -print -quit)"
           test -f "$(find release-assets -name 'DCtuneRstudio-Web.zip' -print -quit)"
       - name: Publish GitHub release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: dctunerstudio-v1.0.0
           name: DCtuneRstudio v1.0.0
