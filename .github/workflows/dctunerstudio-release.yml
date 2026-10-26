@@ -52,7 +52,7 @@ jobs:
           cp java_console/build/libs/DCtuneRstudio.jar dist/input/
           jpackage --type deb --name dctunerstudio --app-version 1.0.0 --vendor 'DC Laboratory' --description 'DCtuneRstudio — Diagnóstico y Sintonización Automotriz' --input dist/input --main-jar DCtuneRstudio.jar --main-class com.rusefi.Launcher --dest dist/output --linux-shortcut --linux-menu-group 'Development;Engineering'
           mv dist/output/dctunerstudio_*.deb dist/output/DCtuneRstudio-Linux.deb
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: DCtuneRstudio-Linux-x86_64
           path: |
@@ -84,7 +84,7 @@ jobs:
           cp java_console/build/libs/DCtuneRstudio.jar dist/input/
           jpackage --type exe --name DCtuneRstudio --app-version 1.0.0 --vendor 'DC Laboratory' --description 'DCtuneRstudio — Diagnóstico y Sintonización Automotriz' --input dist/input --main-jar DCtuneRstudio.jar --main-class com.rusefi.Launcher --dest dist/output --win-menu --win-shortcut --win-dir-chooser
           mv dist/output/DCtuneRstudio-*.exe dist/output/DCtuneRstudio-Windows.exe
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: DCtuneRstudio-Windows
           path: ${{ env.SOURCE_DIR }}/dist/output/DCtuneRstudio-Windows.exe
@@ -112,7 +112,7 @@ jobs:
           cp java_console/build/libs/DCtuneRstudio.jar dist/input/
           jpackage --type dmg --name DCtuneRstudio --app-version 1.0.0 --vendor 'DC Laboratory' --description 'DCtuneRstudio — Diagnóstico y Sintonización Automotriz' --input dist/input --main-jar DCtuneRstudio.jar --main-class com.rusefi.Launcher --dest dist/output
           mv dist/output/DCtuneRstudio-*.dmg dist/output/DCtuneRstudio-macOS.dmg
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: DCtuneRstudio-macOS
           path: ${{ env.SOURCE_DIR }}/dist/output/DCtuneRstudio-macOS.dmg
@@ -141,7 +141,7 @@ jobs:
           jpackage --type deb --name dctunerstudio --app-version 1.0.0 --vendor 'DC Laboratory' --description 'DCtuneRstudio para Raspberry Pi ARM64' --input dist/input --main-jar DCtuneRstudio.jar --main-class com.rusefi.Launcher --dest dist/output --linux-shortcut
           mv dist/output/dctunerstudio_*.deb dist/output/DCtuneRstudio-RaspberryPi.deb
           dpkg-deb --info dist/output/DCtuneRstudio-RaspberryPi.deb | grep -E 'Architecture: arm64|Package: dctunerstudio'
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: DCtuneRstudio-RaspberryPi-ARM64
           path: ${{ env.SOURCE_DIR }}/dist/output/DCtuneRstudio-RaspberryPi.deb
@@ -158,7 +158,7 @@ jobs:
           cp -R "$PROJECT_DIR/media/." dist/DCtuneRstudio-Web/media/
           cp "$PROJECT_DIR/README.md" dist/DCtuneRstudio-Web/
           (cd dist && zip -qr DCtuneRstudio-Web.zip DCtuneRstudio-Web)
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: DCtuneRstudio-Web
           path: dist/DCtuneRstudio-Web.zip
